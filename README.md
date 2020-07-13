@@ -68,6 +68,7 @@ const playwave = new PlayWave(
 | getCurrentRegionTime  | - | 获取当前定位所在位置的时间 |
 | addRegion  | {id,start,end,color,drag,resize,} | 添加区域 |
 | setSeekTime  | Number | 设置预期开始时间与实际开始时间的时间差 |
+| getSeekTime  | - | 获取预期开始时间与实际开始时间的时间差 |
 | setStartTime  | Number | 设置 m3u8 的开始时间 |
 | setAutoCalibrate  | Boolean | 设置是否要自动校验 |
 | zoom  | Boolean 或 Number | 如果传 Boolean，true 为放大一倍， false 为缩小一倍，如果传固定值则设为固定值，基数为 wavesurfer 选项中的 minPxPerSec 值 |
@@ -76,7 +77,7 @@ const playwave = new PlayWave(
 | removeCurrent  | - | 移除 id 为 currentRegion 的 节点 |
 | removeRegions  | - | 移除所有区域 |
 | destroy  | - | 销毁实例 |
-| reload  | - | 重新加载实例 |
+| reload  | playerOptions, waveSurferOptions, timeLineOptions, otherOptions | 重新加载实例 |
 
 
 ## Events
