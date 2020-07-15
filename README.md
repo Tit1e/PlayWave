@@ -65,6 +65,7 @@ const playwave = new PlayWave(
 | calibrate  | - | 校准播放器与波形时间 |
 | autoCenter  | Boolean 或 不传 | 传值则设为指定值，不传则在 `true` 与 `false` 之间切换 |
 | getCurrentTime  | - | 获取当前时间轴的时间 |
+| isPlaying  | - | 获取当前是否正在播放的状态 |
 | getCurrentRegionTime  | - | 获取当前定位所在位置的时间 |
 | addRegion  | {id,start,end,color,drag,resize,} | 添加区域 |
 | setSeekTime  | Number | 设置预期开始时间与实际开始时间的时间差 |
