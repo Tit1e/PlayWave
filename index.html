@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <link rel="stylesheet" href="//g.alicdn.com/de/prismplayer/2.8.8/skins/default/aliplayer-min.css" />
+</head>
+
+<body>
+  <div id="app">
+    <div>
+      <div id="timeline"></div>
+      <div id="wavesurfer"></div>
+    </div>
+    <div id="aliplayer"></div>
+    <br />
+    <button @click="play">播放</button>
+    <button @click="pause">暂停</button>
+    <button @click="getTime('s')">开始</button>
+    <button @click="getTime('e')">结束</button>
+    <button @click="calibrate">波形校准</button>
+    <button @click="autoCenter">时间轴移动</button>
+    <input type="number" v-model="seekTime">
+    <button @click="seek">跳至 {{seekTime}} 秒</button>
+    <button @click="addRegion">添加区域</button>
+    <button @click="getCurrentRegionTime">获取当前坐标时间</button>
+    <button @click="zoom(true)">放大</button>
+    <button @click="zoom(false)">缩小</button>
+    <button @click="destroy">销毁</button>
+    <button @click="removeRegions">移除所有区域</button>
+    <button @click="isPlaying">是否正在播放</button>
+  </div>
+  <script src="http://b1.debug.hz-data.com/cloud/check/newJs/jquery-1.11.1.min.js"></script>
+  <script type="text/javascript" charset="utf-8" src="//g.alicdn.com/de/prismplayer/2.8.8/aliplayer-min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <script src="./lib/wavesurfer.min.js"></script>
+  <script src="./lib/wavesurfer.regions.min.js"></script>
+  <script src="./lib/wavesurfer.timeline.min.js"></script>
+  <script src="./data.js"></script>
+  <script src="./lib/playwave.min.js"></script>
+  <script>
+    function getQueryString(url, name) {
+      //接收参数id
+      var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+      var r = url.split('?').pop().match(reg);
+      if (r != null) return unescape(r[2]);
+      return null;
+    }
+    const vm = new Vue({
+      el: '#app',
+      data() {
+        return {
+          playwave: null,
+          mediaid: '11100010000753',
+          issuedate: '2020-07-02',
+          startEnd: [],
+          m3u8List: [],
+          jsonList: [],
+          mp3List: [],
+          index: 0,
+          seekTime: 100,
+          s: 0,
+          e: 0,
+          cutFlag: '',
+          // 当前 m3u8 开始时间
+          startTime: 0
+        }
+      },
+      created() {},
+      mounted() {
+        this.getMp3()
+      },
+      methods: {
+        isPlaying(){
+          console.log(this.playwave.isPlaying())
+        },
+        removeRegions() {
+          this.playwave.removeRegions()
+        },
+        destroy() {
+          this.playwave.destroy()
+        },
+        onSeek() {
+          this.playwave.on('wseek', () => {
+            if (this.cutFlag) {
+              this[this.cutFlag] = this.playwave.getCurrentTime()
+              console.log(this.s, this.e)
+              if (this.s && this.e && this.e > this.s) {
+                this.playwave.removeCurrent()
+                this.playwave.addRegion({
+                  start: this.s,
+                  end: this.e,
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  drag: false,
+                  resize: true,
+                  id: 'currentRegion'
+                })
+              } else {
+                this.playwave.addCurrent()
+              }
+              this.cutFlag = ''
+            }
+          })
+        },
+        getTime(type) {
+          this.cutFlag = type
+          this.pause()
+        },
+        play() {
+          this.playwave.play()
+        },
+        pause() {
+          this.playwave.pause()
+        },
+        calibrate() {
+          this.playwave.calibrate()
+        },
+        autoCenter() {
+          this.playwave.autoCenter()
+        },
+        seek() {
+          this.playwave.seek(this.seekTime)
+        },
+        addRegion() {
+          this.playwave.addRegion({
+            id: +new Date(),
+            start: 0,
+            end: 10,
+            color: 'rgba(255, 0, 0, 0.5)',
+          })
+        },
+        zoom(type) {
+          this.playwave.zoom(type)
+        },
+        getCurrentRegionTime() {
+          console.log(this.playwave.getCurrentRegionTime())
+        },
+        getM3u8Start(url){
+          try {
+            return +getQueryString(url, 'start_time')
+          } catch (error) {
+            return 0
+          }
+        },
+        initWaveSurfer() {
+          const url = this.m3u8List[this.index]
+          this.startTime = this.getM3u8Start(url)
+          this.playwave = new PlayWave({
+            id: 'aliplayer',
+            source: url,
+          }, {
+            container: '#wavesurfer',
+            height: '100',
+            loopSelection: false,
+            minPxPerSec: 40
+          }, {
+            container: '#timeline'
+          }, {
+            json: this.jsonList[this.index],
+            mp3: this.mp3List[this.index],
+            autoCalibrate: true,
+            startTime: this.startTime
+          })
+          this.playwave.on('pready', () => {
+            this.onSeek()
+          })
+          this.playwave.on('pplay', () => {
+            console.log('pplay')
+          })
+          this.playwave.on('ppause', () => {
+            console.log('ppause')
+          })
+          this.playwave.on('wready', () => {
+            this.getIssueList()
+          })
+        },
+        getMp3() {
+          mp3().then(res => {
+            const mp3List = []
+            const jsonList = []
+            const startEnd = []
+            const m3u8List = []
+            for (let i = 0; i < res.length; i++) {
+              const data = res[i]
+              const start = data.url.substr(79, 10)
+              const end = data.url.substr(90, 10)
+              mp3List.push(data.url)
+              jsonList.push(data.json)
+              startEnd.push([start, end])
+              m3u8List.push(
+                `http://az.hz-data.xyz:8087/channel/${this.mediaid}/playback.m3u8?start_time=${start}&end_time=${end}`
+                )
+            }
+            // mp3 数组
+            this.mp3List = mp3List
+            // json 数组
+            this.jsonList = jsonList
+            // 每个 m3u8 的开始结束时间
+            this.startEnd = startEnd
+            this.m3u8List = m3u8List
+            // 数据初始化完成后开始创建波形实例
+            this.initWaveSurfer()
+          })
+        },
+        addDom(id, name, time){
+          const dom = document.querySelector(`region[data-id=${id}]`)
+          if(!dom) return ;
+          let tempDiv = document.createElement('div')
+          tempDiv.style.paddingLeft = '4px'
+          tempDiv.style.color = '#fff'
+          tempDiv.style.height = '100%'
+          tempDiv.style.fontSize = '13px'
+          tempDiv.style.display = 'flex'
+          tempDiv.style.flexDirection = 'column'
+          tempDiv.title = `${name}（${time}秒）`
+          tempDiv.innerHTML = `
+            <div style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-top: 4px;">${name}</div>
+            <div style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-top: 4px;">${time}秒</div>`
+          if(dom) dom.appendChild(tempDiv)
+        },
+        getIssueList() {
+          issue().then(res => {
+            if (res.length) {
+              res.forEach(i => {
+                if(i.fid){
+                  const id = `r_${i.fid}`
+                  const start = +new Date(i.fstarttime) / 1000 - this.startTime
+                  const end = +new Date(i.fendtime) / 1000 - this.startTime
+                  this.playwave.addRegion({
+                    id,
+                    start,
+                    end
+                  })
+                  this.addDom(id, i.fadname, (end - start).toFixed(2))
+                }
+              })
+            }
+          })
+        },
+      },
+    })
+  </script>
+
+</body>
+
+</html>
